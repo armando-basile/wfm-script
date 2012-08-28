@@ -10,6 +10,9 @@ __status__     = "Production"
 
 
 import os
+import Cookie
+import datetime
+import random
 import time
 import sys
 import cgitb
@@ -21,7 +24,8 @@ from urlparse import urlparse
 cgitb.enable()
 
 
-
+# WFM PASSWORD - CHANGE BEFORE USE ONLINE !!!
+wfmpwd = "adminpassword"
 
 # attributes
 hostName = cgi.escape(os.environ["HTTP_HOST"])
@@ -50,7 +54,7 @@ rfolder = ""
 mainrfolder = ""
 action = "list"
 addprev = False
-
+localpwd = ""
 
 
 
@@ -63,6 +67,91 @@ htmlfooter = """
 <span class="footercode">webfilemanager (wfm.py) python script to manage file using web based user interface<br />\r\n
 rel. """ + __version__ + """ by """ + __author__ +  """</span>\r\n
 """
+
+htmlMoveToLogin = """
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <body>
+    <script language="JavaScript">
+      window.location.href = '<!-- SCRIPTNAME -->';
+    </script>
+  </body>
+</html>
+"""
+
+htmlTemplateLogin = """
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html><head>
+  
+  <meta content="text/html; charset=ISO-8859-1" http-equiv="content-type">
+  <title>-- title --</title>
+
+<style>
+	body {
+	font-family: Helvetica;	 
+	}
+	
+     .footercode {
+     color: #AAAAAA;
+     	cursor: default;
+	font-size: 11px;
+     }
+ 
+     .titlefile {
+	vertical-align: middle; 
+	text-align: left;
+	color: rgb(44, 89, 224); 
+	cursor: default;
+	font-size:large;
+	font-weight: bold;
+     }
+     
+    .txtlabel {
+    color: rgb(44, 89, 224); 
+    cursor: default;
+    font-size:large;
+    font-weight: bold;
+    }
+    
+</style>
+  <script language='JavaScript'>
+    var virfolder = "<!-- virtualfolder -->";
+    
+    function loginaction()
+    {
+      document.getElementById("loginform").submit();
+    }
+    
+    
+  </script>
+</head>
+<body>
+<table style="text-align: left; width: 100%;" border="0" cellpadding="2" cellspacing="2">
+
+  <tbody>
+    <tr>
+      <td>
+        <form id="loginform" name="loginform" action="<!-- SCRIPTNAME -->?f=<!-- virtualfolder -->&wa=access" method="post">
+          <span class="txtlabel">insert password here: </span><input type="password" name="pwd" id="pwd" class="textzone" />
+        </form>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <input type="button" onclick="javascript:loginaction();" value="login" />
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<br>
+
+<br>
+""" + htmlfooter + """
+</body></html>
+"""
+
+
 
 htmlTemplateUpload = """
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
@@ -402,6 +491,11 @@ htmlTemplate = """
     }
     
     
+    function logout()
+    {
+      window.location.href = '""" + pyname + """?f=' + (virfolder) + '&wa=logout';
+    }    
+    
   </script>
 </head>
 <body>
@@ -498,6 +592,37 @@ def joinPath(path1, path2):
     return path1 + path2
   else:
     return path1 + "/" + path2
+
+# get wfm key stored in cookie
+def getCookieKey():
+  try:
+    if os.environ.has_key('HTTP_COOKIE'):
+      cookie = Cookie.SimpleCookie(os.environ['HTTP_COOKIE'])
+    else:
+      cookie = Cookie.SimpleCookie()
+    
+    if cookie.has_key("wfmkey") != True:
+      return ""
+    else:
+      return cookie["wfmkey"].value
+  except Cookie.CookieError, e:
+    writeError('getCookieKey', "error detected")
+    sys.exit()
+
+
+# set wfm key stored in cookie
+def setCookieKey(wfmkey):
+  try:
+    expiration = datetime.datetime.now() + datetime.timedelta(days=2)
+    cookie = Cookie.SimpleCookie()
+    cookie["wfmkey"] = wfmkey
+    cookie["wfmkey"]["domain"] = hostName
+    cookie["wfmkey"]["path"] = "/"
+    cookie["wfmkey"]["expires"] = expiration.strftime("%a, %d-%b-%Y %H:%M:%S PST")
+    print cookie
+  except Exception, e:
+    writeError('setCookieKey', e.strerror)
+    sys.exit()
 
 
 # delete folder, subfolders and files by path
@@ -728,15 +853,80 @@ def addFile(name):
 
 
                 
+"""
+### READ ACTION ###########################################################
+"""
+
+if qsList.has_key("wa"):
+    # web action
+    action = qsList["wa"]
 
 
+if action == "logout":
+  # log out
+  setCookieKey("")
+  htmlMoveToLogin = htmlMoveToLogin.replace("<!-- SCRIPTNAME -->", pyname)
+  print "Content-type: text/html"
+  print  
+  print htmlMoveToLogin
+  sys.exit()
 
 
+if action == "login":
+  # login page request
+  # update informations
+  htmlTemplateLogin = htmlTemplateLogin.replace("-- title --", "Web File Manager - Login")
+  htmlTemplateLogin = htmlTemplateLogin.replace("<!-- SCRIPTNAME -->", pyname)
+  print "Content-type: text/html"
+  print
+  print htmlTemplateLogin
+  sys.exit()
+
+if action == "access":
+  # check for password
+  form = cgi.FieldStorage()
+  if not form.has_key("pwd"):
+    # not autorized
+    htmlMoveToLogin = htmlMoveToLogin.replace("<!-- SCRIPTNAME -->", pyname + "?wa=login&msg=nopwd")
+    print "Content-type: text/html"
+    print
+    print htmlMoveToLogin
+    sys.exit()
+    
+  sendkey = form["pwd"].value
+  
+  if sendkey != wfmpwd:
+    # not autorized
+    htmlMoveToLogin = htmlMoveToLogin.replace("<!-- SCRIPTNAME -->", pyname + "?wa=login&msg=pwdnotequal")
+    print "Content-type: text/html"
+    print
+    print htmlMoveToLogin
+    sys.exit()
+  
+  setCookieKey(sendkey)
+  
+  htmlMoveToLogin = htmlMoveToLogin.replace("<!-- SCRIPTNAME -->", pyname)
+  print "Content-type: text/html"
+  print  
+  print htmlMoveToLogin
+  sys.exit()
 
 
+"""
+### CHECK FOR PERMISSION ###########################################################
+"""
+# get stored password
+localpwd = getCookieKey()
 
 
-
+# check for same authorized password
+if localpwd != wfmpwd:
+  # not autorized
+  htmlMoveToLogin = htmlMoveToLogin.replace("<!-- SCRIPTNAME -->", pyname + "?wa=login")
+  print "Content-type: text/html"
+  print
+  print htmlMoveToLogin
+  sys.exit()
 
 
 
@@ -752,10 +942,6 @@ if qsList.has_key("f"):
     # update virtual path
     vfolder = qsList["f"]
 
-
-if qsList.has_key("wa"):
-    # web action
-    action = qsList["wa"]
 
 if qsList.has_key("edit"):
     # file name to edit
@@ -863,6 +1049,7 @@ if action == "list":
   ### Folders and files list ############################## 
   strFolders += "  <tr class='rowfolder'>\r\n" + \
                 "    <td colspan='4' align='right'>" + \
+                "        <a class='dirlink' href='javascript:logout();'>log out</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + \
                 "        <a class='dirlink' href='javascript:createzip();'>zip folder</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" + \
                 "        <a class='dirlink' href='javascript:createfolder();'>create empty folder</a>" + \
                 "    </td>\r\n" + \
@@ -945,7 +1132,6 @@ elif action == "edit":
   htmlTemplateEdit = htmlTemplateEdit.replace("<!-- FILECONTENT -->", filecontent)
   
   print htmlTemplateEdit
-
 
 
 
