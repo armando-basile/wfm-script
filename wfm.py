@@ -683,8 +683,8 @@ def dirEntries(dir_name, subdir, notInclude):
 def extractFiles(filepath):
     global rfolder
     global vfolder
-
-    zfile = zipfile.ZipFile(os.path.join(rfolder,filepath))
+    
+    zfile = zipfile.ZipFile(os.path.join(rfolder.replace("\\", "/") ,filepath))
 
     for name in zfile.namelist():
       
@@ -765,7 +765,8 @@ def uploadFile():
       if not chunk: 
         break
       fout.write (chunk)
-      fout.close()  
+      
+    fout.close()
       
   except Exception,e:
     writeError('uploadFile ' + os.path.join(rfolder, fileitem.filename), e.strerror)
