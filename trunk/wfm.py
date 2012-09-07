@@ -3,7 +3,7 @@
 __author__     = "Armando Basile"
 __copyright__  = "Copyright 2012"
 __license__    = "GPL"
-__version__    = "0.1.2.0"
+__version__    = "0.1.3.0"
 __maintainer__ = "Armando Basile"
 __email__      = "hmandevteam@gmail.com"
 __status__     = "Production"
