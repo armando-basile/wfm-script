@@ -12,7 +12,7 @@ __status__     = "Production"
 import os
 import Cookie
 import datetime
-import random
+#import random
 import time
 import sys
 import cgitb
@@ -65,7 +65,8 @@ localpwd = ""
 
 htmlfooter = """
 <span class="footercode">webfilemanager (wfm.py) python script to manage file using web based user interface<br />\r\n
-rel. """ + __version__ + """ by """ + __author__ +  """</span>\r\n
+rel. """ + __version__ + """ by """ + __author__ +  """<br />
+python: """ + str(sys.version) + """</span>\r\n
 """
 
 htmlMoveToLogin = """
